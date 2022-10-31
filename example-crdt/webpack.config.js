@@ -39,6 +39,5 @@ module.exports = {
     maxAssetSize: 512000
   },
   optimization: {
-    usedExports: false
   }
 };

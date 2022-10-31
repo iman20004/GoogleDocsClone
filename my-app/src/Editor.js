@@ -10,31 +10,37 @@ function Editor(props) {
 
     // A Yjs document holds the shared data
     const ydoc = new Y.Doc()
-    const ytext = ydoc.getText('quill')
-    console.log(ytext.toString())
-    var ops;
+    const [ytext, setText] = useState(ydoc.getText('quill'));
 
     // EventSource stuff in here
-    const events = new EventSource(`http://194.113.75.203:3001/api/connect/${props.docId}`)
+    const events = new EventSource(`http://194.113.75.203:80/api/connect/${props.docId}`)
 
     // The "sync" event's data should replace the document contents in the UI.
     events.addEventListener('sync', (event) => {
-        console.log("In sync");
+        console.log("In sync")
         var data = JSON.parse(event.data)
-        console.log(data) //<- our data from the backend is here
-        ytext.applyDelta(data)
-        ops = data;
-        console.log(ytext.toString() + " i hate my")
+        console.log(data.doc) //<- our data from the backend is here
+        Y.applyUpdate(ydoc, Uint8Array.from(data))
+        setText(ydoc.getText('quill'));
+        console.log("listener")
         //setYText(event.data); 
     });
 
     // The "update" event's data should be used to apply CRDT changes sent by the server
     events.addEventListener('update', (event) => {
-        console.log("In update");
+        console.log("In update")
         console.log(event.data)
+        var data = JSON.parse(event.data);
+        Y.applyUpdate(ydoc, Uint8Array.from(data));
+        setText(ydoc.getText('quill'));
+        //console.log(ytext.toString())
         //ytext.applyDelta(delta)
         //update crdt obj (which in this case would b y doc)
     });
+
+    // ydoc.on('update', (update) => {
+
+    // })
 
     const wrapperRef = useCallback((wrapper) => {
         if (wrapper == null) return
@@ -43,7 +49,7 @@ function Editor(props) {
         const quill = new Quill(document.querySelector('#editor'), {
             modules: {
                 cursors: true,
-                toolbar: [],
+                toolbar: ['bold', 'italic', 'underline'],
                 history: {
                     userOnly: true
                 }
@@ -51,23 +57,29 @@ function Editor(props) {
             placeholder: 'Start collaborating...',
             theme: 'snow'
         })
-        quill.setContents(ops)
+        console.log("in wrapper")
+        const binding = new QuillBinding(ytext, quill)
         //Create an editor-binding which
         //"binds" the quill editor to a Y.Text type.
         quill.on('text-change',function(delta, oldDelta, source) {
-            console.log(JSON.stringify(delta.ops))
-            fetch(`http://194.113.75.203:3001/api/op/${props.docId}`, 
+            let uint8Array = Y.encodeStateAsUpdate(ydoc)
+            let array = Array.from(uint8Array)
+            //let str = new TextDecoder().decode(uint8Array)
+            let str = array.toString();
+            console.log(str)
+            
+            fetch(`http://194.113.75.203:80/api/op/${props.docId}`, 
                { method: 'POST',
                headers: {
                 Accept: "application/json",
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*",
               },
-               body: JSON.stringify(delta.ops)})
+               body: JSON.stringify({load: array})})
         });
 
     }, [])
-
+    
     return <div id='editor' className='container' ref={wrapperRef}></div>
 }
 

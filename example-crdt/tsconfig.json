@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "outDir": "./dist/",
+    "outDir": "../backend/dist",
     "allowSyntheticDefaultImports": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedParameters": true,
@@ -9,7 +9,7 @@
     "noUnusedLocals": true,
     "moduleResolution": "node",
     "noImplicitAny": true,
-    "declarationDir": "dist/types",
+    "declarationDir": "../backend/dist/types",
     "declaration": true,
     "target": "es2015",
     "module": "es2015",
@@ -20,6 +20,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "../backend/dist"
   ]
 }
