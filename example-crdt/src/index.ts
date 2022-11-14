@@ -25,7 +25,7 @@ exports.CRDT = class {
       this.cb(JSON.stringify({load}), local);
 
     });
-    ['update', 'insert', 'delete', 'toHTML'].forEach(f => (this as any)[f] = (this as any)[f].bind(this));
+    ['update', 'insert', 'delete', 'insertImage', 'toHTML'].forEach(f => (this as any)[f] = (this as any)[f].bind(this));
   }
 
   update(update: string) {
@@ -48,10 +48,29 @@ exports.CRDT = class {
     // this.cb(JSON.stringify({load}), true);
   }
 
+  insertImage(index: number, url: string) {
+    var ytext = this.doc.getText()
+    
+    // Retain everything up untill index & insert image
+    ytext.applyDelta([
+      {retain: index},
+      {insert: {image: url} }
+    ]);
+
+  }
+
   toHTML() {
     // ...
     var delta = this.doc.getText().toDelta();
-    var cfg = {}
+    var cfg = {
+      urlSanitizer: (url: string) => {
+        return `<img src="${url}">`
+      }
+    }
+    // includes images as IMG tags with a SRC attribute pointing 
+    // to the image served by your /media/:mediaid route
+    
+    //var converter = new QuillDeltaToHtmlConverter(delta, cfg);
     var converter = new QuillDeltaToHtmlConverter(delta, cfg);
 
     return converter.convert();

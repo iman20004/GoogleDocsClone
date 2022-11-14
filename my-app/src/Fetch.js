@@ -11,7 +11,6 @@ function Fetch() {
         setDocId(event.target.value)
     }
     
-
     return (
         <div>
             {!showEditor ?
