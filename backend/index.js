@@ -4,6 +4,7 @@ const routes = require("./routes/routes.js")
 const doc_routes = require("./routes/doc_routes.js")
 const media_routes = require("./routes/media_routes.js")
 const user_routes = require("./routes/user_routes.js")
+const index_routes = require("./routes/index_routes")
 const path = require('path')
 const dotenv = require('dotenv')
 const cookieParser = require('cookie-parser')
@@ -11,7 +12,8 @@ const sessions = require('express-session');
 const db = require("./db_init");
 const port = 80;
 
-dotenv.config()
+dotenv.config();
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -39,6 +41,8 @@ app.use('/', routes);
 app.use('/', doc_routes);
 app.use('/users', user_routes);
 app.use('/media', media_routes);
+app.use('/index', index_routes);
+
 
 
 app.use(express.static(path.join(__dirname, 'build')));

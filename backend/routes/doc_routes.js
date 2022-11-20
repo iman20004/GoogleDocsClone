@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const auth = require('./auth.js');
+const client = require('../elasticsearch_init');
 const Docs = require('../models/doc_model');
 //const Users = require('../models/user_model');
 const Y = require('yjs')
@@ -48,21 +49,21 @@ router.get("/api/connect/:id", async (req, res) => {
 
   if (clients[req.params.id] === undefined) {
     clients[req.params.id] = [newClient];
-    savedDocs[req.params.id] = savedDoc;
+    savedDocs[req.params.id] = {doc: savedDoc, name: doc.name} ;
 
     savedDoc.on('update', (update) => {
       const docClients = clients[req.params.id];
       let array = Array.from(update);
       docClients.forEach(client => {
         console.log(client.id);
-        //if(client.id !== savedDoc.clientID){
+        if(client.id !== savedDoc.clientID){
           client.res.write(`event: update\ndata: ${JSON.stringify(array)}\n\n`);
-        //}
+        }
       });
     });
 
   } else {
-    update = Y.encodeStateAsUpdate(savedDocs[req.params.id]);
+    update = Y.encodeStateAsUpdate(savedDocs[req.params.id].doc);
     clients[req.params.id].push(newClient);
   }
 
@@ -84,7 +85,7 @@ router.get("/api/connect/:id", async (req, res) => {
   //console.log(`id: ${req.params.id}, clients: ${clients[req.params.id]}`)
   clients[req.params.id].forEach((client) => {
     if (client.presence) {
-      console.log(client.name);
+      //console.log(client.name);
       res.write(`event: presence\ndata: ${JSON.stringify(client.presence)}\n\n`);
     }
   });
@@ -97,14 +98,14 @@ router.get("/api/connect/:id", async (req, res) => {
       if (!clients[req.params.id].length) {
         //clients[req.params.id] = undefined; 
         //save to database
-        doc.update = Array.from(Y.encodeStateAsUpdate(savedDocs[req.params.id]));
+        doc.update = Array.from(Y.encodeStateAsUpdate(savedDocs[req.params.id].doc));
         doc.save();
 
         //savedDocs[req.params.id] = undefined; 
       } else {
         console.log(`${savedDoc.clientID} Connection closed`);
         clients[req.params.id].forEach((client) => {
-          console.log(`Alerting: ${client.name}`)
+          //console.log(`Alerting: ${client.name}`)
           let cursor_data = {
             session_id: savedDoc.clientID, name: req.session.name,
             cursor: {}
@@ -125,23 +126,19 @@ router.post("/api/op/:id", async (req, res) => {
   // Get array & convert to uint8array
   let arr = req.body.load;
   let uint8array = Uint8Array.from(arr);
-  console.log("inside api op / id");
-  //console.log(req);
-  //console.info(savedDocs);
-  // Apply changes (in form of uint8array) to saved backend doc 
-  // console.log(savedDocs[req.params.id])
-  Y.applyUpdate(savedDocs[req.params.id], uint8array);
-  // console.log(req.session.name); 
-  // console.log(savedDocs[req.params.id].getText().toString());
-  // console.log(savedDocs[req.params.id].getText().toDelta()); 
-  // persistence.storeUpdate(req.params.id, uint8array);
+  //console.log("inside api op / id");
+  //console.log(req.params)
 
-  // Send updates to all client (except maybe the one that sent it????)
-  // const docClients = clients[req.params.id];
-  // let array = Array.from(uint8array);
-  // docClients.forEach(client => {
-  //   client.res.write(`event: update\ndata: ${JSON.stringify(array)}\n\n`)
-  // });
+  Y.applyUpdate(savedDocs[req.params.id].doc, uint8array);
+  //save in elasticsearch 
+  await client.index({
+    index: 'docs',
+    id: req.params.id,
+    document: {
+      name: savedDocs[req.params.id].name, 
+      content: savedDocs[req.params.id].doc.getText('quill').toString()
+    }
+  });
 
   return res.status(200).send('Success').end();
 });
@@ -153,18 +150,6 @@ router.post("/api/presence/:id", async (req, res) => {
   const { index, length } = req.body;
 
   let docClients = clients[req.params.id];
-  // console.log(docClients);
-  // let found = null;
-  // docClients.forEach((client) => {
-  //   // console.log(client);
-  //   // console.log(client.name);
-  //   if(client.name === req.cookies.name){
-  //     found = client
-  //   }
-  // });
-  //let found = Object.fromEntries(Object.entries(docClients).filter(([k,v]) => v.name === req.cookies.name))
-  //console.log(req.cookies.name);
-  //console.log(found);
   let cursor_data = {
     session_id: clientIds[req.session.name], name: req.session.name,
     cursor: { index: index, length: length }
@@ -202,6 +187,16 @@ router.post('/collection/create', async (req, res) => {
   await newDoc.save().then(() => {
     res.json({ id: newDoc._id });
   });
+
+  await client.index({
+    index: 'docs',
+    id: newDoc._id,
+    document: {
+      name: newDoc.name, 
+      content: ''
+    }
+  });
+
 })
 
 
@@ -209,6 +204,11 @@ router.post('/collection/create', async (req, res) => {
 router.post('/collection/delete', async (req, res) => {
   if (!req.session.name) return res.json({ error: true, message: 'Alex is asian' });
   const { id } = req.body;
+
+  await client.delete({
+    index: 'docs',
+    id: id
+  }); 
 
   Docs.findByIdAndDelete(id, [], (err, doc) => {
     if (err || !doc) {

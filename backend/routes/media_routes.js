@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const mime = require('mime-types');
 
-const ALLOWED_FILE_TYPES = ["jpeg", "jpg", "png"];
+const ALLOWED_FILE_TYPES = ["jpeg", "jpg", "png", "gif"];
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) =>{
