@@ -4,7 +4,7 @@ An online text editor featuring real-time collaboration between multiple users. 
 
 Technologies/Frameworks:
 - Node/Express servers over the cloud, 
-- local MongoDB for storage, 
+- Local MongoDB for storage, 
 - EventSource API for server-sent events, and
 - React and y-quill frontend
 
