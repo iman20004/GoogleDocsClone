@@ -1,5 +1,5 @@
 # GoogleDocsClone
-An online text editor featuring real-time collaboration between multiple users. Utilized Yjs CRDT framework to resolve conflicting changes/edits.
+An online text editor featuring real-time collaboration between multiple users. Utilizes Yjs CRDT framework to resolve conflicting changes/edits.
 
 
 Technologies/Frameworks:
